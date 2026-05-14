@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase'
 import { fmt, fmtKr } from '../lib/utils'
-import Modal from '../components/Modal'
-import { createPortal } from 'react-dom'
 
 export default function Customers() {
   const navigate = useNavigate()
@@ -11,6 +10,7 @@ export default function Customers() {
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
+  const [editCustomer, setEditCustomer] = useState(null)
   const [form, setForm] = useState({ name: '', contact: '', phone: '', email: '' })
   const [saving, setSaving] = useState(false)
 
@@ -21,7 +21,7 @@ export default function Customers() {
     const b = document.createElement('button')
     b.className = 'btn btn-primary btn-sm'
     b.textContent = '+ Ny kund'
-    b.onclick = () => setModal(true)
+    b.onclick = () => openNew()
     btn.appendChild(b)
     loadData()
     return () => { btn.innerHTML = '' }
@@ -44,13 +44,28 @@ export default function Customers() {
     setLoading(false)
   }
 
+  function openNew() {
+    setEditCustomer(null)
+    setForm({ name: '', contact: '', phone: '', email: '' })
+    setModal(true)
+  }
+
+  function openEdit(c) {
+    setEditCustomer(c)
+    setForm({ name: c.name, contact: c.contact || '', phone: c.phone || '', email: c.email || '' })
+    setModal(true)
+  }
+
   async function saveCustomer() {
     if (!form.name.trim()) return
     setSaving(true)
-    await supabase.from('customers').insert({ ...form })
+    if (editCustomer) {
+      await supabase.from('customers').update({ ...form }).eq('id', editCustomer.id)
+    } else {
+      await supabase.from('customers').insert({ ...form })
+    }
     setSaving(false)
     setModal(false)
-    setForm({ name: '', contact: '', phone: '', email: '' })
     loadData()
   }
 
@@ -77,7 +92,7 @@ export default function Customers() {
               </tr>
             </thead>
             <tbody>
-              {customers.length === 0 && <tr><td colSpan="5" className="empty">Inga kunder ännu — lägg till en ovan</td></tr>}
+              {customers.length === 0 && <tr><td colSpan="5" className="empty">Inga kunder ännu</td></tr>}
               {customers.map(c => (
                 <tr key={c.id}>
                   <td><span className="clickable" onClick={() => navigate(`/customers/${c.id}`)}>{c.name}</span></td>
@@ -86,7 +101,8 @@ export default function Customers() {
                   <td className="col-hide" style={{ textAlign: 'right', fontWeight: 600 }}>{fmtKr(stats[c.id]?.revenue || 0)}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button className="btn btn-sm" onClick={() => navigate(`/customers/${c.id}`)}>Öppna →</button>
-                    <button className="btn btn-sm btn-danger" style={{ marginLeft: 6 }} onClick={() => deleteCustomer(c.id)}>✕</button>
+                    <button class="btn btn-sm" style={{ marginLeft: 4 }} onClick={() => openEdit(c)} title="Redigera">✏️</button>
+                    <button className="btn btn-sm btn-danger" style={{ marginLeft: 4 }} onClick={() => deleteCustomer(c.id)} title="Ta bort">✕</button>
                   </td>
                 </tr>
               ))}
@@ -98,7 +114,7 @@ export default function Customers() {
       {modal && createPortal(
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
-            <div className="modal-title">Lägg till kund</div>
+            <div className="modal-title">{editCustomer ? 'Redigera kund' : 'Lägg till kund'}</div>
             <div className="form-row"><label className="form-label">Kundnamn *</label><input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Företagsnamn" autoFocus /></div>
             <div className="form-row"><label className="form-label">Kontaktperson</label><input value={form.contact} onChange={e => setForm(f => ({...f, contact: e.target.value}))} placeholder="Namn" /></div>
             <div className="g2">
@@ -107,7 +123,7 @@ export default function Customers() {
             </div>
             <div className="modal-foot">
               <button className="btn" onClick={() => setModal(false)}>Avbryt</button>
-              <button className="btn btn-primary" onClick={saveCustomer} disabled={saving}>{saving ? 'Sparar...' : 'Spara kund'}</button>
+              <button className="btn btn-primary" onClick={saveCustomer} disabled={saving}>{saving ? 'Sparar...' : (editCustomer ? 'Spara ändringar' : 'Spara kund')}</button>
             </div>
           </div>
         </div>,
