@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
-import { fmt, fmtKr } from '../lib/utils'
+import { fmt, fmtKr, SERVICES } from '../lib/utils'
 
 export default function ProjectDetail() {
   const { id } = useParams()
@@ -16,7 +16,7 @@ export default function ProjectDetail() {
   const [modal, setModal] = useState(false)
   const [profiles, setProfiles] = useState([])
   const today = new Date().toISOString().slice(0,10)
-  const [form, setForm] = useState({ date: today, hours: '', note: '', user_id: profile?.id })
+  const [form, setForm] = useState({ date: today, hours: '', service: '', note: '', user_id: profile?.id })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -42,6 +42,7 @@ export default function ProjectDetail() {
     setProject(proj)
     setEntries(ents || [])
     document.getElementById('page-title').textContent = proj?.name || 'Projekt'
+    setForm(f => ({ ...f, service: proj?.service || SERVICES[0] }))
     setLoading(false)
   }
 
@@ -53,11 +54,12 @@ export default function ProjectDetail() {
       user_id: isAdmin ? form.user_id : profile.id,
       date: form.date,
       hours: Number(form.hours),
+      service: form.service,
       note: form.note,
     })
     setSaving(false)
     setModal(false)
-    setForm({ date: today, hours: '', note: '', user_id: profile?.id })
+    setForm(f => ({ ...f, hours: '', note: '' }))
     loadData()
   }
 
@@ -86,7 +88,7 @@ export default function ProjectDetail() {
 
       <div className="card card-table">
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #eeecea', fontWeight: 600, fontSize: 13 }}>
-          <span className="tag" style={{ marginRight: 8 }}>{project.service}</span> Tidsregistreringar
+          Tidsregistreringar
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="tbl">
@@ -94,6 +96,7 @@ export default function ProjectDetail() {
               <tr>
                 <th>Datum</th>
                 {isAdmin && <th>Förare</th>}
+                <th>Tjänst</th>
                 <th style={{ textAlign: 'right' }}>Timmar</th>
                 <th className="col-hide" style={{ textAlign: 'right' }}>Värde</th>
                 <th>Anteckning</th>
@@ -101,16 +104,19 @@ export default function ProjectDetail() {
               </tr>
             </thead>
             <tbody>
-              {entries.length === 0 && <tr><td colSpan="6" className="empty">Ingen tid registrerad ännu</td></tr>}
-              {entries.map(e => (
-                <tr key={e.id}>
+              {entries.length === 0 && <tr><td colSpan="7" className="empty">Ingen tid registrerad ännu</td></tr>}
+              {entries.map(e => {
+                const u = e.user
+                const svc = e.service || project.service
+                return <tr key={e.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{e.date}</td>
                   {isAdmin && <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div className="avatar" style={{ width: 24, height: 24, fontSize: 10, background: (e.user?.color||'#1D9E75')+'22', color: e.user?.color||'#1D9E75' }}>{e.user?.initials}</div>
-                      <span style={{ fontSize: 12 }}>{e.user?.name || '-'}</span>
+                      <div className="avatar" style={{ width: 24, height: 24, fontSize: 10, background: (u?.color||'#1D9E75')+'22', color: u?.color||'#1D9E75' }}>{u?.initials}</div>
+                      <span style={{ fontSize: 12 }}>{u?.name || '-'}</span>
                     </div>
                   </td>}
+                  <td><span className="tag">{svc}</span></td>
                   <td style={{ textAlign: 'right' }}><span className="pill">{fmt(Number(e.hours))}</span></td>
                   <td className="col-hide" style={{ textAlign: 'right', color: '#888' }}>{fmtKr(Number(e.hours)*project.rate)}</td>
                   <td style={{ color: '#888', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.note || '—'}</td>
@@ -119,7 +125,7 @@ export default function ProjectDetail() {
                       <button className="btn btn-sm btn-danger" onClick={() => deleteEntry(e.id)}>✕</button>}
                   </td>
                 </tr>
-              ))}
+              })}
             </tbody>
           </table>
         </div>
@@ -132,6 +138,12 @@ export default function ProjectDetail() {
             <div className="g2">
               <div className="form-row"><label className="form-label">Datum *</label><input type="date" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} /></div>
               <div className="form-row"><label className="form-label">Timmar *</label><input type="number" value={form.hours} onChange={e => setForm(f=>({...f,hours:e.target.value}))} min="0.5" max="24" step="0.5" placeholder="3.5" autoFocus /></div>
+            </div>
+            <div className="form-row">
+              <label className="form-label">Tjänst</label>
+              <select value={form.service} onChange={e => setForm(f=>({...f,service:e.target.value}))}>
+                {SERVICES.map(s => <option key={s}>{s}</option>)}
+              </select>
             </div>
             {isAdmin && profiles.length > 0 && (
               <div className="form-row">
