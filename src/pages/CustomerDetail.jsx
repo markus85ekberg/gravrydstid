@@ -12,6 +12,7 @@ export default function CustomerDetail() {
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
+  const [editProject, setEditProject] = useState(null)
   const [form, setForm] = useState({ name: '', project_number: '', service: SERVICES[0], rate: 850 })
   const [saving, setSaving] = useState(false)
 
@@ -21,7 +22,7 @@ export default function CustomerDetail() {
     const b = document.createElement('button')
     b.className = 'btn btn-primary btn-sm'
     b.textContent = '+ Nytt projekt'
-    b.onclick = () => setModal(true)
+    b.onclick = () => openNew()
     btn.appendChild(b)
     loadData()
     return () => { btn.innerHTML = '' }
@@ -45,19 +46,39 @@ export default function CustomerDetail() {
     setLoading(false)
   }
 
+  function openNew() {
+    setEditProject(null)
+    setForm({ name: '', project_number: '', service: SERVICES[0], rate: 850 })
+    setModal(true)
+  }
+
+  function openEdit(p) {
+    setEditProject(p)
+    setForm({ name: p.name, project_number: p.project_number || '', service: p.service, rate: p.rate })
+    setModal(true)
+  }
+
   async function saveProject() {
     if (!form.name.trim()) return
     setSaving(true)
-    await supabase.from('projects').insert({
-      customer_id: id,
-      name: form.name,
-      project_number: form.project_number || null,
-      service: form.service,
-      rate: Number(form.rate)
-    })
+    if (editProject) {
+      await supabase.from('projects').update({
+        name: form.name,
+        project_number: form.project_number || null,
+        service: form.service,
+        rate: Number(form.rate)
+      }).eq('id', editProject.id)
+    } else {
+      await supabase.from('projects').insert({
+        customer_id: id,
+        name: form.name,
+        project_number: form.project_number || null,
+        service: form.service,
+        rate: Number(form.rate)
+      })
+    }
     setSaving(false)
     setModal(false)
-    setForm({ name: '', project_number: '', service: SERVICES[0], rate: 850 })
     loadData()
   }
 
@@ -76,7 +97,6 @@ export default function CustomerDetail() {
   return (
     <>
       <button className="back-btn" onClick={() => navigate('/customers')}>← Alla kunder</button>
-
       <div className="g2" style={{ marginBottom: 14 }}>
         <div className="card">
           <div style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>Kunduppgifter</div>
@@ -107,7 +127,7 @@ export default function CustomerDetail() {
               </tr>
             </thead>
             <tbody>
-              {projects.length === 0 && <tr><td colSpan="7" className="empty">Inga projekt – lägg till ett ovan</td></tr>}
+              {projects.length === 0 && <tr><td colSpan="7" className="empty">Inga projekt</td></tr>}
               {projects.map(p => (
                 <tr key={p.id}>
                   <td style={{ color: '#888', fontSize: 12, fontFamily: 'monospace' }}>{p.project_number || '—'}</td>
@@ -118,7 +138,8 @@ export default function CustomerDetail() {
                   <td className="col-hide" style={{ textAlign: 'right', fontWeight: 600 }}>{fmtKr(stats[p.id]?.revenue || 0)}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button className="btn btn-sm" onClick={() => navigate(`/projects/${p.id}`)}>Öppna →</button>
-                    <button className="btn btn-sm btn-danger" style={{ marginLeft: 6 }} onClick={() => deleteProject(p.id)}>✕</button>
+                    <button className="btn btn-sm" style={{ marginLeft: 4 }} onClick={() => openEdit(p)} title="Redigera">✏️</button>
+                    <button className="btn btn-sm btn-danger" style={{ marginLeft: 4 }} onClick={() => deleteProject(p.id)} title="Ta bort">✕</button>
                   </td>
                 </tr>
               ))}
@@ -130,9 +151,9 @@ export default function CustomerDetail() {
       {modal && createPortal(
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
-            <div className="modal-title">Nytt projekt / område</div>
+            <div className="modal-title">{editProject ? 'Redigera projekt' : 'Nytt projekt / område'}</div>
             <div className="g2">
-              <div className="form-row"><label className="form-label">Projektnamn *</label><input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Ex. Rise, Industrigatan..." autoFocus /></div>
+              <div className="form-row"><label className="form-label">Projektnamn *</label><input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Ex. Rise..." autoFocus /></div>
               <div className="form-row"><label className="form-label">Projektnummer</label><input value={form.project_number} onChange={e => setForm(f=>({...f,project_number:e.target.value}))} placeholder="Ex. 2024-001" /></div>
             </div>
             <div className="g2">
@@ -146,7 +167,7 @@ export default function CustomerDetail() {
             </div>
             <div className="modal-foot">
               <button className="btn" onClick={() => setModal(false)}>Avbryt</button>
-              <button className="btn btn-primary" onClick={saveProject} disabled={saving}>{saving ? 'Sparar...' : 'Spara projekt'}</button>
+              <button className="btn btn-primary" onClick={saveProject} disabled={saving}>{saving ? 'Sparar...' : (editProject ? 'Spara ändringar' : 'Spara projekt')}</button>
             </div>
           </div>
         </div>,
