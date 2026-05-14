@@ -13,7 +13,8 @@ export default function CustomerDetail() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editProject, setEditProject] = useState(null)
-  const [form, setForm] = useState({ name: '', project_number: '', service: SERVICES[0], rate: 850 })
+  const emptyForm = { name:'',project_number:'',service:SERVICES[0],rate:850,contact_name:'',contact_phone:'',contact_email:'' }
+  const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -39,107 +40,89 @@ export default function CustomerDetail() {
       s[e.project_id].hours += Number(e.hours)
       s[e.project_id].revenue += Number(e.hours) * (e.project?.rate || 0)
     }
-    setCustomer(cust)
-    setProjects(projs || [])
-    setStats(s)
+    setCustomer(cust); setProjects(projs || []); setStats(s)
     document.getElementById('page-title').textContent = cust?.name || 'Kund'
     setLoading(false)
   }
 
-  function openNew() {
-    setEditProject(null)
-    setForm({ name: '', project_number: '', service: SERVICES[0], rate: 850 })
-    setModal(true)
-  }
+  function openNew() { setEditProject(null); setForm(emptyForm); setModal(true) }
 
   function openEdit(p) {
     setEditProject(p)
-    setForm({ name: p.name, project_number: p.project_number || '', service: p.service, rate: p.rate })
+    setForm({ name:p.name, project_number:p.project_number||'', service:p.service, rate:p.rate,
+      contact_name:p.contact_name||'', contact_phone:p.contact_phone||'', contact_email:p.contact_email||'' })
     setModal(true)
   }
 
   async function saveProject() {
     if (!form.name.trim()) return
     setSaving(true)
-    if (editProject) {
-      await supabase.from('projects').update({
-        name: form.name,
-        project_number: form.project_number || null,
-        service: form.service,
-        rate: Number(form.rate)
-      }).eq('id', editProject.id)
-    } else {
-      await supabase.from('projects').insert({
-        customer_id: id,
-        name: form.name,
-        project_number: form.project_number || null,
-        service: form.service,
-        rate: Number(form.rate)
-      })
-    }
-    setSaving(false)
-    setModal(false)
-    loadData()
+    const payload = { name:form.name, project_number:form.project_number||null, service:form.service, rate:Number(form.rate),
+      contact_name:form.contact_name||null, contact_phone:form.contact_phone||null, contact_email:form.contact_email||null }
+    if (editProject) { await supabase.from('projects').update(payload).eq('id', editProject.id) }
+    else { await supabase.from('projects').insert({ customer_id: id, ...payload }) }
+    setSaving(false); setModal(false); loadData()
   }
 
   async function deleteProject(pid) {
     if (!confirm('Ta bort projektet och all registrerad tid?')) return
-    await supabase.from('projects').delete().eq('id', pid)
-    loadData()
+    await supabase.from('projects').delete().eq('id', pid); loadData()
   }
 
   if (loading) return <div className="loading-center"><div className="spinner"/></div>
   if (!customer) return <p>Kund hittades inte</p>
 
-  const totalH = Object.values(stats).reduce((s, v) => s + v.hours, 0)
-  const totalRev = Object.values(stats).reduce((s, v) => s + v.revenue, 0)
+  const totalH = Object.values(stats).reduce((s,v)=>s+v.hours,0)
+  const totalRev = Object.values(stats).reduce((s,v)=>s+v.revenue,0)
 
   return (
     <>
-      <button className="back-btn" onClick={() => navigate('/customers')}>← Alla kunder</button>
-      <div className="g2" style={{ marginBottom: 14 }}>
+      <button className="back-btn" onClick={()=>navigate('/customers')}>← Alla kunder</button>
+      <div className="g2" style={{marginBottom:14}}>
         <div className="card">
-          <div style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>Kunduppgifter</div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>{customer.name}</div>
-          {customer.contact && <div style={{ fontSize: 13, color: '#666', marginBottom: 3 }}>👤 {customer.contact}</div>}
-          {customer.phone && <div style={{ fontSize: 13, color: '#666', marginBottom: 3 }}>📞 {customer.phone}</div>}
-          {customer.email && <div style={{ fontSize: 13, color: '#666' }}>✉ {customer.email}</div>}
+          <div style={{fontSize:11,color:'#888',marginBottom:8}}>Kunduppgifter</div>
+          <div style={{fontSize:15,fontWeight:700,marginBottom:8}}>{customer.name}</div>
+          {customer.contact&&<div style={{fontSize:13,color:'#666',marginBottom:3}}>👤 {customer.contact}</div>}
+          {customer.phone&&<div style={{fontSize:13,color:'#666',marginBottom:3}}>📞 {customer.phone}</div>}
+          {customer.email&&<div style={{fontSize:13,color:'#666'}}>✉ {customer.email}</div>}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
           <div className="metric"><div className="metric-val">{fmt(totalH)}</div><div className="metric-lbl">Timmar totalt</div></div>
           <div className="metric"><div className="metric-val">{fmtKr(totalRev)}</div><div className="metric-lbl">Omsättning</div></div>
         </div>
       </div>
 
       <div className="card card-table">
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #eeecea', fontWeight: 600, fontSize: 13 }}>Projekt / Områden</div>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{padding:'12px 16px',borderBottom:'1px solid #eeecea',fontWeight:600,fontSize:13}}>Projekt / Områden</div>
+        <div style={{overflowX:'auto'}}>
           <table className="tbl">
-            <thead>
-              <tr>
-                <th>Projektnr</th>
-                <th>Namn</th>
-                <th>Tjänst</th>
-                <th style={{ textAlign: 'right' }}>Timpris</th>
-                <th style={{ textAlign: 'right' }}>Timmar</th>
-                <th className="col-hide" style={{ textAlign: 'right' }}>Värde</th>
-                <th/>
-              </tr>
-            </thead>
+            <thead><tr>
+              <th>Projektnr</th><th>Namn</th><th className="col-hide">Kontakt</th>
+              <th>Tjänst</th><th style={{textAlign:'right'}}>Timpris</th>
+              <th style={{textAlign:'right'}}>Timmar</th><th className="col-hide" style={{textAlign:'right'}}>Värde</th><th/>
+            </tr></thead>
             <tbody>
-              {projects.length === 0 && <tr><td colSpan="7" className="empty">Inga projekt</td></tr>}
-              {projects.map(p => (
+              {projects.length===0&&<tr><td colSpan="8" className="empty">Inga projekt</td></tr>}
+              {projects.map(p=>(
                 <tr key={p.id}>
-                  <td style={{ color: '#888', fontSize: 12, fontFamily: 'monospace' }}>{p.project_number || '—'}</td>
-                  <td><span className="clickable" onClick={() => navigate(`/projects/${p.id}`)}>{p.name}</span></td>
+                  <td style={{color:'#888',fontSize:12,fontFamily:'monospace'}}>{p.project_number||'—'}</td>
+                  <td><span className="clickable" onClick={()=>navigate('/projects/'+p.id)}>{p.name}</span></td>
+                  <td className="col-hide">
+                    {p.contact_name
+                      ? <div style={{fontSize:12}}><div style={{fontWeight:500}}>{p.contact_name}</div>
+                          {p.contact_phone&&<div style={{color:'#888'}}>📞 {p.contact_phone}</div>}
+                          {p.contact_email&&<div style={{color:'#888'}}>✉ {p.contact_email}</div>}
+                        </div>
+                      : <span style={{color:'#ccc'}}>—</span>}
+                  </td>
                   <td><span className="tag">{p.service}</span></td>
-                  <td style={{ textAlign: 'right', color: '#888' }}>{p.rate} kr/h</td>
-                  <td style={{ textAlign: 'right' }}><span className="pill">{fmt(stats[p.id]?.hours || 0)}</span></td>
-                  <td className="col-hide" style={{ textAlign: 'right', fontWeight: 600 }}>{fmtKr(stats[p.id]?.revenue || 0)}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button className="btn btn-sm" onClick={() => navigate(`/projects/${p.id}`)}>Öppna →</button>
-                    <button className="btn btn-sm" style={{ marginLeft: 4 }} onClick={() => openEdit(p)} title="Redigera">✏️</button>
-                    <button className="btn btn-sm btn-danger" style={{ marginLeft: 4 }} onClick={() => deleteProject(p.id)} title="Ta bort">✕</button>
+                  <td style={{textAlign:'right',color:'#888'}}>{p.rate} kr/h</td>
+                  <td style={{textAlign:'right'}}><span className="pill">{fmt(stats[p.id]?.hours||0)}</span></td>
+                  <td className="col-hide" style={{textAlign:'right',fontWeight:600}}>{fmtKr(stats[p.id]?.revenue||0)}</td>
+                  <td style={{textAlign:'right',whiteSpace:'nowrap'}}>
+                    <button className="btn btn-sm" onClick={()=>navigate('/projects/'+p.id)}>Öppna →</button>
+                    <button className="btn btn-sm" style={{marginLeft:4}} onClick={()=>openEdit(p)} title="Redigera">✏️</button>
+                    <button className="btn btn-sm btn-danger" style={{marginLeft:4}} onClick={()=>deleteProject(p.id)} title="Ta bort">✕</button>
                   </td>
                 </tr>
               ))}
@@ -148,26 +131,31 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      {modal && createPortal(
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
+      {modal&&createPortal(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
           <div className="modal">
-            <div className="modal-title">{editProject ? 'Redigera projekt' : 'Nytt projekt / område'}</div>
+            <div className="modal-title">{editProject?'Redigera projekt':'Nytt projekt / område'}</div>
             <div className="g2">
-              <div className="form-row"><label className="form-label">Projektnamn *</label><input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Ex. Rise..." autoFocus /></div>
-              <div className="form-row"><label className="form-label">Projektnummer</label><input value={form.project_number} onChange={e => setForm(f=>({...f,project_number:e.target.value}))} placeholder="Ex. 2024-001" /></div>
+              <div className="form-row"><label className="form-label">Projektnamn *</label><input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Ex. Rise..." autoFocus/></div>
+              <div className="form-row"><label className="form-label">Projektnummer</label><input value={form.project_number} onChange={e=>setForm(f=>({...f,project_number:e.target.value}))} placeholder="Ex. 2024-001"/></div>
             </div>
             <div className="g2">
-              <div className="form-row">
-                <label className="form-label">Tjänst</label>
-                <select value={form.service} onChange={e => setForm(f=>({...f,service:e.target.value}))}>
-                  {SERVICES.map(s => <option key={s}>{s}</option>)}
+              <div className="form-row"><label className="form-label">Tjänst</label>
+                <select value={form.service} onChange={e=>setForm(f=>({...f,service:e.target.value}))}>
+                  {SERVICES.map(s=><option key={s}>{s}</option>)}
                 </select>
               </div>
-              <div className="form-row"><label className="form-label">Timpris (kr/h)</label><input type="number" value={form.rate} onChange={e => setForm(f=>({...f,rate:e.target.value}))} min="0" step="50" /></div>
+              <div className="form-row"><label className="form-label">Timpris (kr/h)</label><input type="number" value={form.rate} onChange={e=>setForm(f=>({...f,rate:e.target.value}))} min="0" step="50"/></div>
+            </div>
+            <div style={{fontSize:11,fontWeight:700,color:'#888',margin:'12px 0 8px',textTransform:'uppercase',letterSpacing:'0.05em',borderTop:'1px solid #eeecea',paddingTop:12}}>Projektkontakt</div>
+            <div className="form-row"><label className="form-label">Kontaktperson</label><input value={form.contact_name} onChange={e=>setForm(f=>({...f,contact_name:e.target.value}))} placeholder="Namn"/></div>
+            <div className="g2">
+              <div className="form-row"><label className="form-label">Telefon</label><input value={form.contact_phone} onChange={e=>setForm(f=>({...f,contact_phone:e.target.value}))} placeholder="070-000 00 00"/></div>
+              <div className="form-row"><label className="form-label">E-post</label><input type="email" value={form.contact_email} onChange={e=>setForm(f=>({...f,contact_email:e.target.value}))} placeholder="kontakt@foretag.se"/></div>
             </div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setModal(false)}>Avbryt</button>
-              <button className="btn btn-primary" onClick={saveProject} disabled={saving}>{saving ? 'Sparar...' : (editProject ? 'Spara ändringar' : 'Spara projekt')}</button>
+              <button className="btn" onClick={()=>setModal(false)}>Avbryt</button>
+              <button className="btn btn-primary" onClick={saveProject} disabled={saving}>{saving?'Sparar...':(editProject?'Spara ändringar':'Spara projekt')}</button>
             </div>
           </div>
         </div>,
