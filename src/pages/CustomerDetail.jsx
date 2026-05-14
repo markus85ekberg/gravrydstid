@@ -12,7 +12,7 @@ export default function CustomerDetail() {
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ name: '', service: SERVICES[0], rate: 850 })
+  const [form, setForm] = useState({ name: '', project_number: '', service: SERVICES[0], rate: 850 })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -48,10 +48,16 @@ export default function CustomerDetail() {
   async function saveProject() {
     if (!form.name.trim()) return
     setSaving(true)
-    await supabase.from('projects').insert({ customer_id: id, name: form.name, service: form.service, rate: Number(form.rate) })
+    await supabase.from('projects').insert({
+      customer_id: id,
+      name: form.name,
+      project_number: form.project_number || null,
+      service: form.service,
+      rate: Number(form.rate)
+    })
     setSaving(false)
     setModal(false)
-    setForm({ name: '', service: SERVICES[0], rate: 850 })
+    setForm({ name: '', project_number: '', service: SERVICES[0], rate: 850 })
     loadData()
   }
 
@@ -91,6 +97,7 @@ export default function CustomerDetail() {
           <table className="tbl">
             <thead>
               <tr>
+                <th>Projektnr</th>
                 <th>Namn</th>
                 <th>Tjänst</th>
                 <th style={{ textAlign: 'right' }}>Timpris</th>
@@ -100,9 +107,10 @@ export default function CustomerDetail() {
               </tr>
             </thead>
             <tbody>
-              {projects.length === 0 && <tr><td colSpan="6" className="empty">Inga projekt – lägg till ett ovan</td></tr>}
+              {projects.length === 0 && <tr><td colSpan="7" className="empty">Inga projekt – lägg till ett ovan</td></tr>}
               {projects.map(p => (
                 <tr key={p.id}>
+                  <td style={{ color: '#888', fontSize: 12, fontFamily: 'monospace' }}>{p.project_number || '—'}</td>
                   <td><span className="clickable" onClick={() => navigate(`/projects/${p.id}`)}>{p.name}</span></td>
                   <td><span className="tag">{p.service}</span></td>
                   <td style={{ textAlign: 'right', color: '#888' }}>{p.rate} kr/h</td>
@@ -123,7 +131,10 @@ export default function CustomerDetail() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-title">Nytt projekt / område</div>
-            <div className="form-row"><label className="form-label">Namn *</label><input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Ex. Rise, Industrigatan..." autoFocus /></div>
+            <div className="g2">
+              <div className="form-row"><label className="form-label">Projektnamn *</label><input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Ex. Rise, Industrigatan..." autoFocus /></div>
+              <div className="form-row"><label className="form-label">Projektnummer</label><input value={form.project_number} onChange={e => setForm(f=>({...f,project_number:e.target.value}))} placeholder="Ex. 2024-001" /></div>
+            </div>
             <div className="g2">
               <div className="form-row">
                 <label className="form-label">Tjänst</label>
