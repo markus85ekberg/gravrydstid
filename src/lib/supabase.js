@@ -1,8 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Byt ut dessa mot dina egna värden från Supabase-projektet
-// Hämtas under: Settings → API i ditt Supabase-projekt
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const SUPABASE_URL = 'https://jrepmlwvrjsebieevygd.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpyZXBtbHd2cmpzZWJpZWV2eWdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MjIxMzEsImV4cCI6MjA5NDI5ODEzMX0.rrHV_T08bmUFNBdbAp5PU7Z2vbpwFSEqVeyqr1fwuUU'
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
