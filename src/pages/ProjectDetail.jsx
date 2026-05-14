@@ -40,8 +40,7 @@ export default function ProjectDetail() {
       const { data: profs } = await supabase.from('profiles').select('*').order('name')
       setProfiles(profs || [])
     }
-    setProject(proj)
-    setEntries(ents || [])
+    setProject(proj); setEntries(ents || [])
     document.getElementById('page-title').textContent = proj?.name || 'Projekt'
     setForm(f => ({ ...f, service: proj?.service || SERVICES[0] }))
     setLoading(false)
@@ -62,28 +61,15 @@ export default function ProjectDetail() {
   async function saveEntry() {
     if (!form.date || !form.hours || Number(form.hours) <= 0) return
     setSaving(true)
-    const payload = {
-      project_id: id,
-      user_id: isAdmin ? form.user_id : profile.id,
-      date: form.date,
-      hours: Number(form.hours),
-      service: form.service,
-      note: form.note,
-    }
-    if (editEntry) {
-      await supabase.from('time_entries').update(payload).eq('id', editEntry.id)
-    } else {
-      await supabase.from('time_entries').insert(payload)
-    }
-    setSaving(false)
-    setModal(false)
-    loadData()
+    const payload = { project_id: id, user_id: isAdmin ? form.user_id : profile.id, date: form.date, hours: Number(form.hours), service: form.service, note: form.note }
+    if (editEntry) { await supabase.from('time_entries').update(payload).eq('id', editEntry.id) }
+    else { await supabase.from('time_entries').insert(payload) }
+    setSaving(false); setModal(false); loadData()
   }
 
   async function deleteEntry(eid) {
     if (!confirm('Ta bort registreringen?')) return
-    await supabase.from('time_entries').delete().eq('id', eid)
-    loadData()
+    await supabase.from('time_entries').delete().eq('id', eid); loadData()
   }
 
   if (loading) return <div className="loading-center"><div className="spinner"/></div>
@@ -94,20 +80,31 @@ export default function ProjectDetail() {
 
   return (
     <>
-      <button className="back-btn" onClick={() => navigate(`/customers/${project.customer_id}`)}>← {project.customer?.name}</button>
+      <button className="back-btn" onClick={() => navigate('/customers/' + project.customer_id)}>← {project.customer?.name}</button>
 
-      {project.project_number && (
-        <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 12, color: '#888' }}>Projektnummer:</span>
-          <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, background: '#f1efe8', padding: '2px 10px', borderRadius: 6 }}>{project.project_number}</span>
+      <div className="g2" style={{ marginBottom: 14 }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {project.project_number && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: '#888' }}>Projektnummer:</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, background: '#f1efe8', padding: '2px 10px', borderRadius: 6 }}>{project.project_number}</span>
+            </div>
+          )}
+          {project.contact_name && (
+            <div style={{ fontSize: 12 }}>
+              <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>Projektkontakt</div>
+              <div style={{ fontWeight: 600 }}>👤 {project.contact_name}</div>
+              {project.contact_phone && <div style={{ color: '#666' }}>📞 {project.contact_phone}</div>}
+              {project.contact_email && <div style={{ color: '#666' }}>✉ {project.contact_email}</div>}
+            </div>
+          )}
         </div>
-      )}
-
-      <div className="g4" style={{ marginBottom: 14 }}>
-        <div className="metric"><div className="metric-val">{fmt(totalH)}</div><div className="metric-lbl">Timmar totalt</div></div>
-        <div className="metric"><div className="metric-val">{fmtKr(totalRev)}</div><div className="metric-lbl">Värde</div></div>
-        <div className="metric"><div className="metric-val">{entries.length}</div><div className="metric-lbl">Registreringar</div></div>
-        <div className="metric"><div className="metric-val" style={{ fontSize: 16 }}>{project.rate} kr/h</div><div className="metric-lbl">Timpris</div></div>
+        <div className="g2">
+          <div className="metric"><div className="metric-val">{fmt(totalH)}</div><div className="metric-lbl">Timmar totalt</div></div>
+          <div className="metric"><div className="metric-val">{fmtKr(totalRev)}</div><div className="metric-lbl">Värde</div></div>
+          <div className="metric"><div className="metric-val">{entries.length}</div><div className="metric-lbl">Registreringar</div></div>
+          <div className="metric"><div className="metric-val" style={{ fontSize: 15 }}>{project.rate} kr/h</div><div className="metric-lbl">Timpris</div></div>
+        </div>
       </div>
 
       <div className="card card-table">
@@ -116,36 +113,30 @@ export default function ProjectDetail() {
           <table className="tbl">
             <thead>
               <tr>
-                <th>Datum</th>
-                {isAdmin && <th>Förare</th>}
-                <th>Tjänst</th>
+                <th>Datum</th>{isAdmin&&<th>Förare</th>}<th>Tjänst</th>
                 <th style={{ textAlign: 'right' }}>Timmar</th>
                 <th className="col-hide" style={{ textAlign: 'right' }}>Värde</th>
-                <th>Anteckning</th>
-                <th/>
+                <th>Anteckning</th><th/>
               </tr>
             </thead>
             <tbody>
-              {entries.length === 0 && <tr><td colSpan="7" className="empty">Ingen tid registrerad ännu</td></tr>}
+              {entries.length===0&&<tr><td colSpan="7" className="empty">Ingen tid registrerad ännu</td></tr>}
               {entries.map(e => {
-                const u = e.user
-                const svc = e.service || project.service
+                const u = e.user; const svc = e.service || project.service
                 return <tr key={e.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{e.date}</td>
-                  {isAdmin && <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div className="avatar" style={{ width: 24, height: 24, fontSize: 10, background: (u?.color||'#1D9E75')+'22', color: u?.color||'#1D9E75' }}>{u?.initials}</div>
-                      <span style={{ fontSize: 12 }}>{u?.name || '-'}</span>
-                    </div>
-                  </td>}
+                  {isAdmin&&<td><div style={{ display:'flex',alignItems:'center',gap:6 }}>
+                    <div className="avatar" style={{ width:24,height:24,fontSize:10,background:(u?.color||'#1D9E75')+'22',color:u?.color||'#1D9E75' }}>{u?.initials}</div>
+                    <span style={{ fontSize:12 }}>{u?.name||'-'}</span>
+                  </div></td>}
                   <td><span className="tag">{svc}</span></td>
-                  <td style={{ textAlign: 'right' }}><span className="pill">{fmt(Number(e.hours))}</span></td>
-                  <td className="col-hide" style={{ textAlign: 'right', color: '#888' }}>{fmtKr(Number(e.hours)*project.rate)}</td>
-                  <td style={{ color: '#888', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.note || '—'}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {(isAdmin || e.user_id === profile.id) && <>
-                      <button className="btn btn-sm" onClick={() => openEdit(e)}>✏️</button>
-                      <button className="btn btn-sm btn-danger" style={{ marginLeft: 4 }} onClick={() => deleteEntry(e.id)}>✕</button>
+                  <td style={{ textAlign:'right' }}><span className="pill">{fmt(Number(e.hours))}</span></td>
+                  <td className="col-hide" style={{ textAlign:'right',color:'#888' }}>{fmtKr(Number(e.hours)*project.rate)}</td>
+                  <td style={{ color:'#888',maxWidth:150,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{e.note||'—'}</td>
+                  <td style={{ textAlign:'right',whiteSpace:'nowrap' }}>
+                    {(isAdmin||e.user_id===profile.id)&&<>
+                      <button className="btn btn-sm" onClick={()=>openEdit(e)}>✏️</button>
+                      <button className="btn btn-sm btn-danger" style={{ marginLeft:4 }} onClick={()=>deleteEntry(e.id)}>✕</button>
                     </>}
                   </td>
                 </tr>
@@ -155,32 +146,28 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      {modal && createPortal(
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
+      {modal&&createPortal(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setModal(false)}>
           <div className="modal">
-            <div className="modal-title">{editEntry ? 'Redigera registrering' : `Registrera tid – ${project.name}`}</div>
+            <div className="modal-title">{editEntry?'Redigera registrering':'Registrera tid – '+project.name}</div>
             <div className="g2">
-              <div className="form-row"><label className="form-label">Datum *</label><input type="date" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} /></div>
-              <div className="form-row"><label className="form-label">Timmar *</label><input type="number" value={form.hours} onChange={e => setForm(f=>({...f,hours:e.target.value}))} min="0.5" max="24" step="0.5" placeholder="3.5" autoFocus /></div>
+              <div className="form-row"><label className="form-label">Datum *</label><input type="date" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))}/></div>
+              <div className="form-row"><label className="form-label">Timmar *</label><input type="number" value={form.hours} onChange={e=>setForm(f=>({...f,hours:e.target.value}))} min="0.5" max="24" step="0.5" placeholder="3.5" autoFocus/></div>
             </div>
-            <div className="form-row">
-              <label className="form-label">Tjänst</label>
-              <select value={form.service} onChange={e => setForm(f=>({...f,service:e.target.value}))}>
-                {SERVICES.map(s => <option key={s}>{s}</option>)}
+            <div className="form-row"><label className="form-label">Tjänst</label>
+              <select value={form.service} onChange={e=>setForm(f=>({...f,service:e.target.value}))}>
+                {SERVICES.map(s=><option key={s}>{s}</option>)}
               </select>
             </div>
-            {isAdmin && profiles.length > 0 && (
-              <div className="form-row">
-                <label className="form-label">Förare</label>
-                <select value={form.user_id} onChange={e => setForm(f=>({...f,user_id:e.target.value}))}>
-                  {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-            )}
-            <div className="form-row"><label className="form-label">Anteckning</label><input value={form.note} onChange={e => setForm(f=>({...f,note:e.target.value}))} placeholder="Valfritt..." /></div>
+            {isAdmin&&profiles.length>0&&<div className="form-row"><label className="form-label">Förare</label>
+              <select value={form.user_id} onChange={e=>setForm(f=>({...f,user_id:e.target.value}))}>
+                {profiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>}
+            <div className="form-row"><label className="form-label">Anteckning</label><input value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} placeholder="Valfritt..."/></div>
             <div className="modal-foot">
-              <button className="btn" onClick={() => setModal(false)}>Avbryt</button>
-              <button className="btn btn-primary" onClick={saveEntry} disabled={saving}>{saving ? 'Sparar...' : (editEntry ? 'Spara ändringar' : 'Spara')}</button>
+              <button className="btn" onClick={()=>setModal(false)}>Avbryt</button>
+              <button className="btn btn-primary" onClick={saveEntry} disabled={saving}>{saving?'Sparar...':(editEntry?'Spara ändringar':'Spara')}</button>
             </div>
           </div>
         </div>,
