@@ -79,6 +79,13 @@ export default function ProjectDetail() {
     <>
       <button className="back-btn" onClick={() => navigate(`/customers/${project.customer_id}`)}>← {project.customer?.name}</button>
 
+      {project.project_number && (
+        <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 12, color: '#888' }}>Projektnummer:</span>
+          <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 600, background: '#f1efe8', padding: '2px 10px', borderRadius: 6 }}>{project.project_number}</span>
+        </div>
+      )}
+
       <div className="g4" style={{ marginBottom: 14 }}>
         <div className="metric"><div className="metric-val">{fmt(totalH)}</div><div className="metric-lbl">Timmar totalt</div></div>
         <div className="metric"><div className="metric-val">{fmtKr(totalRev)}</div><div className="metric-lbl">Värde</div></div>
