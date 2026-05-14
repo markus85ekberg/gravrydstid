@@ -14,6 +14,7 @@ export default function ProjectDetail() {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
+  const [editEntry, setEditEntry] = useState(null)
   const [profiles, setProfiles] = useState([])
   const today = new Date().toISOString().slice(0,10)
   const [form, setForm] = useState({ date: today, hours: '', service: '', note: '', user_id: profile?.id })
@@ -25,7 +26,7 @@ export default function ProjectDetail() {
     const b = document.createElement('button')
     b.className = 'btn btn-primary btn-sm'
     b.textContent = '+ Registrera tid'
-    b.onclick = () => setModal(true)
+    b.onclick = () => openNew()
     btn.appendChild(b)
     loadData()
     return () => { btn.innerHTML = '' }
@@ -46,20 +47,36 @@ export default function ProjectDetail() {
     setLoading(false)
   }
 
+  function openNew() {
+    setEditEntry(null)
+    setForm({ date: today, hours: '', service: project?.service || SERVICES[0], note: '', user_id: profile?.id })
+    setModal(true)
+  }
+
+  function openEdit(e) {
+    setEditEntry(e)
+    setForm({ date: e.date, hours: e.hours, service: e.service || project?.service || SERVICES[0], note: e.note || '', user_id: e.user_id })
+    setModal(true)
+  }
+
   async function saveEntry() {
     if (!form.date || !form.hours || Number(form.hours) <= 0) return
     setSaving(true)
-    await supabase.from('time_entries').insert({
+    const payload = {
       project_id: id,
       user_id: isAdmin ? form.user_id : profile.id,
       date: form.date,
       hours: Number(form.hours),
       service: form.service,
       note: form.note,
-    })
+    }
+    if (editEntry) {
+      await supabase.from('time_entries').update(payload).eq('id', editEntry.id)
+    } else {
+      await supabase.from('time_entries').insert(payload)
+    }
     setSaving(false)
     setModal(false)
-    setForm(f => ({ ...f, hours: '', note: '' }))
     loadData()
   }
 
@@ -94,9 +111,7 @@ export default function ProjectDetail() {
       </div>
 
       <div className="card card-table">
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #eeecea', fontWeight: 600, fontSize: 13 }}>
-          Tidsregistreringar
-        </div>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #eeecea', fontWeight: 600, fontSize: 13 }}>Tidsregistreringar</div>
         <div style={{ overflowX: 'auto' }}>
           <table className="tbl">
             <thead>
@@ -127,9 +142,11 @@ export default function ProjectDetail() {
                   <td style={{ textAlign: 'right' }}><span className="pill">{fmt(Number(e.hours))}</span></td>
                   <td className="col-hide" style={{ textAlign: 'right', color: '#888' }}>{fmtKr(Number(e.hours)*project.rate)}</td>
                   <td style={{ color: '#888', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.note || '—'}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    {(isAdmin || e.user_id === profile.id) &&
-                      <button className="btn btn-sm btn-danger" onClick={() => deleteEntry(e.id)}>✕</button>}
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {(isAdmin || e.user_id === profile.id) && <>
+                      <button className="btn btn-sm" onClick={() => openEdit(e)}>✏️</button>
+                      <button className="btn btn-sm btn-danger" style={{ marginLeft: 4 }} onClick={() => deleteEntry(e.id)}>✕</button>
+                    </>}
                   </td>
                 </tr>
               })}
@@ -141,7 +158,7 @@ export default function ProjectDetail() {
       {modal && createPortal(
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
-            <div className="modal-title">Registrera tid – {project.name}</div>
+            <div className="modal-title">{editEntry ? 'Redigera registrering' : `Registrera tid – ${project.name}`}</div>
             <div className="g2">
               <div className="form-row"><label className="form-label">Datum *</label><input type="date" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} /></div>
               <div className="form-row"><label className="form-label">Timmar *</label><input type="number" value={form.hours} onChange={e => setForm(f=>({...f,hours:e.target.value}))} min="0.5" max="24" step="0.5" placeholder="3.5" autoFocus /></div>
@@ -163,7 +180,7 @@ export default function ProjectDetail() {
             <div className="form-row"><label className="form-label">Anteckning</label><input value={form.note} onChange={e => setForm(f=>({...f,note:e.target.value}))} placeholder="Valfritt..." /></div>
             <div className="modal-foot">
               <button className="btn" onClick={() => setModal(false)}>Avbryt</button>
-              <button className="btn btn-primary" onClick={saveEntry} disabled={saving}>{saving ? 'Sparar...' : 'Spara'}</button>
+              <button className="btn btn-primary" onClick={saveEntry} disabled={saving}>{saving ? 'Sparar...' : (editEntry ? 'Spara ändringar' : 'Spara')}</button>
             </div>
           </div>
         </div>,
